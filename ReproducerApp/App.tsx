@@ -1,37 +1,61 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import NativeFullHeapPost from './specs/NativeFullHeapPost';
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+type Scenario = {
+  readonly label: string;
+  readonly fillJavaHeap: boolean;
+  readonly attachThreadFirst: boolean;
+};
+
+const scenarios: readonly Scenario[] = [
+  {
+    label: 'Post with the Java heap free',
+    fillJavaHeap: false,
+    attachThreadFirst: false,
+  },
+  {
+    label: 'Post from a new thread with the Java heap full',
+    fillJavaHeap: true,
+    attachThreadFirst: false,
+  },
+  {
+    label: 'Post from an attached thread with the Java heap full',
+    fillJavaHeap: true,
+    attachThreadFirst: true,
+  },
+];
 
 function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+  const [status, setStatus] = useState('Tap a button once per launch');
 
-  return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
-    </SafeAreaProvider>
-  );
-}
-
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
+  const start = (scenario: Scenario) => {
+    NativeFullHeapPost.postFromOwnThread(
+      scenario.fillJavaHeap,
+      scenario.attachThreadFirst,
+      () => {
+        NativeFullHeapPost.release();
+        setStatus(`${scenario.label}: the posted callback ran`);
+      },
+    );
+  };
 
   return (
     <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
+      {scenarios.map(scenario => (
+        <Pressable
+          key={scenario.label}
+          accessibilityRole="button"
+          accessibilityLabel={scenario.label}
+          onPress={() => start(scenario)}
+          style={styles.button}
+        >
+          <Text style={styles.buttonText}>{scenario.label}</Text>
+        </Pressable>
+      ))}
+      <Text accessibilityLabel={status} style={styles.status}>
+        {status}
+      </Text>
     </View>
   );
 }
@@ -39,6 +63,23 @@ function AppContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    justifyContent: 'center',
+    padding: 24,
+    gap: 16,
+    backgroundColor: 'white',
+  },
+  button: {
+    padding: 16,
+    borderRadius: 8,
+    backgroundColor: '#1f6feb',
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+  },
+  status: {
+    fontSize: 16,
+    color: 'black',
   },
 });
 
